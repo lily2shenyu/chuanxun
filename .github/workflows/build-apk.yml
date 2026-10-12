@@ -1,0 +1,46 @@
+name: Build APK (传讯)
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Setup Android SDK
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then SDKMANAGER=$(find "$ANDROID_HOME" -name sdkmanager -type f 2>/dev/null | head -1); fi
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" "platform-tools" > /dev/null 2>&1 || true
+      - name: Ensure signing keystore
+        run: |
+          mkdir -p android/keystore
+          if [ ! -f android/keystore/chuanxun.keystore ]; then
+            keytool -genkeypair -v -keystore android/keystore/chuanxun.keystore -alias chuanxun -keyalg RSA -keysize 2048 -validity 10000 -storepass chuanxun -keypass chuanxun -dname "CN=ChuanXun, OU=lili, O=shenyu, L=city, S=state, C=CN"
+          fi
+      - name: Download Gradle
+        run: |
+          curl -sL -o gradle.zip https://services.gradle.org/distributions/gradle-8.7-bin.zip
+          unzip -q gradle.zip
+      - name: Prepare web assets
+        run: |
+          mkdir -p android/app/src/main/assets/www
+          cp -r www/. android/app/src/main/assets/www/
+          ls android/app/src/main/assets/www | head
+      - name: Build APK
+        run: |
+          export PATH="$GITHUB_WORKSPACE/gradle-8.7/bin:$PATH"
+          cd android
+          gradle assembleDebug --no-daemon
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: chuanxun-apk
+          path: android/app/build/outputs/apk/debug/*.apk
