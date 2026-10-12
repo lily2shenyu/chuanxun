@@ -10,7 +10,7 @@ android {
         love {
             storeFile file('../keystore/chuanxun.keystore')
             storePassword 'chuanxun'
-            keyAlias 'lilidreamlove'
+            keyAlias 'chuanxun'
             keyPassword 'chuanxun'
         }
     }
